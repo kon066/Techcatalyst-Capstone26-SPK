@@ -10,3 +10,6 @@ Pulling from repo
 2. git pull
 3. git checkout <feature-branch>
 4. git merge dev
+
+### Analytical question:
+How can NYC taxi operators use geographic patterns found in demand and revenue to identify the most profitable areas and operating times to optimize their service strategy?
