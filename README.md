@@ -3,7 +3,7 @@ Git Repository for Tech Catalyst Capstone project
 
 Environment set up
 1. uv init
-2. source .venv/bin/activate
+2. source .venv/bin/activate (if .venv doesn't exist, try uv add dotenv first)
 
 Pulling from repo
 1. git checkout dev
