@@ -1,0 +1,2 @@
+monday: ran into a problem with loading files into aws glue. it was reading the time columns as unknown when we needed it to be a timestamp.
+we fixed it by running our own crawler and writing the schema and data into a table. we can run the crawler on the entire folder in the future.
