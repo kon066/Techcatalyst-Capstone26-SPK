@@ -1,14 +1,30 @@
 .env
+**/.env
 .env.*
+**/snow.cfg
+**/aws.cfg
+**/cloud.cfg
+*.pem
+**/keys/
+*service-account*.json
+*service_account*.json
+gcp-*.json
 *.key
 *.pem
 
 .log
 
-__pycache__/
-*.pyc
 .venv/
-venv/
+**/.venv/
+.venv-probes/
+.venv-mlflow/
+__pycache__/
+**/__pycache__/
+*.pyc
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+.python-version
+uv.lock
 
 *.parquet
 *.csv
@@ -20,3 +36,23 @@ config.local.json
 
 .vscode/
 .idea/
+
+.python-version
+
+AGENTS.md
+CLAUDE.md
+prompt.md
+prompt_v2.md
+.agents/
+.claude/
+.superpowers/
+docs/
+instructor_archive/
+reference-material/
+**/Instructor Notes/
+**/Audits/
+*Acceptance Report*
+*Content_Review*
+*_Audit_*
+DE_2026.drawio
+*.drawio.bkp
