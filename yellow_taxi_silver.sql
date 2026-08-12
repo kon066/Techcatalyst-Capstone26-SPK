@@ -1,13 +1,18 @@
 SELECT *
-FROM yellow_taxi_raw
+FROM yellow_taxi_bronze
 WHERE
     fare_amount >= 0
+    AND fare_amount >= 3
     AND total_amount >= 0
     AND passenger_count IS NOT NULL
     AND passenger_count > 0
     AND trip_distance > 0
     AND trip_distance <= 200
     AND tpep_dropoff_datetime > tpep_pickup_datetime
+    AND pulocationid <= 263 
+    AND dolocationid <= 263
+    AND YEAR(tpep_pickup_datetime) BETWEEN 2024 AND 2026
+    AND YEAR(tpep_dropoff_datetime) BETWEEN 2024 AND 2026
     AND DATEDIFF(
             minute,
             tpep_pickup_datetime,
