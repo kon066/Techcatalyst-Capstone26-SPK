@@ -15,7 +15,7 @@ Fill this in as you go, not on Thursday from memory.
 | Rows loaded to bronze | 39,224,735 |
 | Rows surviving to silver | 23,445,146 |
 | Rows dropped |  |
-| Percentage dropped | |
+| Percentage dropped |  |
 
 If rows in source and rows in bronze do not match, explain the gap before anything else. A load that silently dropped records is a more serious problem than dirty data, because you did not choose it.
 
