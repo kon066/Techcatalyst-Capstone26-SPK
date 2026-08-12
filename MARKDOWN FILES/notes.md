@@ -8,14 +8,14 @@ look into why multiple parquet files are written into out output bucket folders
 
 
 tuesday: 
-we also realized that running yellow and green ingest in parallel made it so we were running both everytime we were trying to troubleshoot one. It made it harder to see the issue as well. we ran into a problem when we changed the path from file to folder. we may have to compare the schemas between 2025 and 2026 data to see if thats the reason they can be run together. we decided to not use glue to move data. we used a copy in the aws cloudshell to move the data into our raw bucket. we used aws s3 sync s3://techcatalyst-de-2026/raw/green_taxi/ s3://techcatalyst-spk-capstone/taxi_timestamp_fixed/taxi_green/. glue parser was not working with timestamp in our data. so we switch version and changed datatype of column which let us write to snwoflake.
+we also realized that running yellow and green ingest in parallel made it so we were running both everytime we were trying to troubleshoot one. It made it harder to see the issue as well. we ran into a problem when we changed the path from file to folder. we may have to compare the schemas between 2025 and 2026 data to see if thats the reason they can be run together. we decided to not use glue to move data. we used a copy in the aws cloudshell to move the data into our raw bucket. we used aws s3 sync s3://techcatalyst-de-2026/raw/green_taxi/ s3://techcatalyst-spk-capstone/taxi_timestamp_fixed/taxi_green/. glue parser was not working with timestamp in our data. so we switch version and changed datatype of column which let us write to snowflake.
 
-yellow_taxi_raw: 38,759,706 rows
-green_taxi_raw: 465,029 rows
+wednesday:
+ran into a problem with connecting tableau to snowflake. decided to just download views from snowflake locally as they are small in size and use them in tableau.
 
-yellow_taxi_bronze: 23,070,793 rows
-green_taxi_bronze: 374,353 rows
+Analysis we need to do:
+year over year revenue per zone
 
-we decided to keep data that was from right before january or right after may.
-
-
+Tableau tables created:
+Top 10 Most Busy Zones w/ Revenue
+Most Busy Pickup Zone-Hours

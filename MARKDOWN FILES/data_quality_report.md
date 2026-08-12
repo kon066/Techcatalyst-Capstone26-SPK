@@ -12,10 +12,10 @@ Fill this in as you go, not on Thursday from memory.
 | Metric | Count |
 | :--- | :--- |
 | Rows in source files | 39,224,735 |
-| Rows loaded to bronze | 23,445,146 |
-| Rows surviving to silver |  |
-| Rows dropped | |
-| Percentage dropped | |
+| Rows loaded to bronze | 39,224,735 |
+| Rows surviving to silver | 23,445,146 |
+| Rows dropped |  |
+| Percentage dropped |  |
 
 If rows in source and rows in bronze do not match, explain the gap before anything else. A load that silently dropped records is a more serious problem than dirty data, because you did not choose it.
 
@@ -74,6 +74,78 @@ We gave up 3621 rows of our data but were able to clean and make sure our data w
 
 ---
 
+### Defect 3: Outlier trip distance
+
+**What it is**
+We had some trips with very high trip distances, indicating incorrect information.
+
+**How we found it**
+We used a SQL query to find trip distances greater than 200.
+
+**Scale**
+
+| | Count | Percent of total |
+| :--- | :--- | :--- |
+| Records affected | 1670 | |
+
+**Which metrics it would distort, and in which direction**
+Any distance related metrics could be distorted. It would distort towards higher distances. For example, average trip distance would be greater because there are many entries with very large trip distances.
+
+**Our decision:** drop / correct / quarantine / keep with caveat
+We dropped the rows.
+
+**Why, and what we gave up**
+We gave up 1670 rows of our data but were able to clean and make sure our data was accurate. We removed incorrect data that clearly indicated false information.
+---
+
+### Defect 4: Total amount does not equal sum of all fees
+
+**What it is**
+There were entries that had total amounts that didn't equal the sum of all the fees in that entry.
+
+**How we found it**
+We used a SQL query to find sum of all fees that don't equal total amount.
+
+**Scale**
+
+| | Count | Percent of total |
+| :--- | :--- | :--- |
+| Records affected | 13,338,842 | |
+
+**Which metrics it would distort, and in which direction**
+Any payment related metrics could be distorted. It could have distorted in any direction. 
+
+**Our decision:** drop / correct / quarantine / keep with caveat
+We dropped the rows.
+
+**Why, and what we gave up**
+We gave up 13,338,842 rows of our data but were able to clean and make sure our data was accurate. We removed incorrect data that clearly indicated false information.
+---
+
+### Defect 5: Passenger count is 0 or null
+
+**What it is**
+Rows existed where passenger count was 0 or null. This indicates these trips were false information.
+
+**How we found it**
+We used a SQL query to find passenger count values that were 0 or null.
+
+**Scale**
+
+| | Count | Percent of total |
+| :--- | :--- | :--- |
+| Records affected | 9,248,993 |  |
+
+**Which metrics it would distort, and in which direction**
+Any passenger related metrics could be distorted. It could have distorted in a lesser direction. For example, average passenger count can be skewed to be less. If we were to calculate payment per passenger based on the counts than that can be skewed higher as we would add payment amounts while not adding any passengers. This would also affect metrics regarding other columns as these entire rows should be considered invalid and we wouldn't want to keep invalid data.
+
+**Our decision:** drop / correct / quarantine / keep with caveat
+We dropped the rows.
+
+**Why, and what we gave up**
+We gave up 9,248,993 rows of our data but were able to clean and make sure our data was accurate. We removed incorrect data that clearly indicated false information.
+---
+
 ## Defects we found but did not address
 
 Being explicit about what you left alone, and why, is a strength. It shows you made a decision rather than missing it.
@@ -91,11 +163,13 @@ Every team hits this, so answer it explicitly.
 `tip_amount` is recorded for credit card transactions but not for cash, so cash tips appear as zero.
 
 **Does any of our analysis involve tips?** yes / no
+Yes
 
 **If yes, how did we handle it?**
+We handle in the views that we will load to tableau. We have created the column total_revenue_before_tip to be used in some of our displays. This is important because it avoid creating incorrect comparison between total_revenue from trips that had cash tips and credit card tips.
 
 **If we present a tipping chart, what does the slide say about this?**
-
+We would show credit card tips only as that is the only data we have. This would not represent all tipping as cash tipping is very popular in nyc taxi trips but our lack of data limits our possible analysis.
 ---
 
 ## What we would do with more time
