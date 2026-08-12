@@ -163,11 +163,13 @@ Every team hits this, so answer it explicitly.
 `tip_amount` is recorded for credit card transactions but not for cash, so cash tips appear as zero.
 
 **Does any of our analysis involve tips?** yes / no
+Yes
 
 **If yes, how did we handle it?**
+We handle in the views that we will load to tableau. We have created the column total_revenue_before_tip to be used in some of our displays. This is important because it avoid creating incorrect comparison between total_revenue from trips that had cash tips and credit card tips.
 
 **If we present a tipping chart, what does the slide say about this?**
-
+We would show credit card tips only as that is the only data we have. This would not represent all tipping as cash tipping is very popular in nyc taxi trips but our lack of data limits our possible analysis.
 ---
 
 ## What we would do with more time
