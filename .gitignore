@@ -56,3 +56,6 @@ reference-material/
 *_Audit_*
 DE_2026.drawio
 *.drawio.bkp
+
+**/nyc_taxi_dbt/logs
+**/logs

@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: silver
+    database: TECHCATALYST
+    schema: GROUP_SPK
+    tables:
+      - name: taxi_trips_standardized
+      - name: taxi_zone_lkp
+      - name: taxi_zones_geo

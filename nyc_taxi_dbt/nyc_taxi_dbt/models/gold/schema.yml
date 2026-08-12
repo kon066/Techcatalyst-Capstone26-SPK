@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Date dimension based on pickup_datetime.
+    columns:
+      - name: pickup_date
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_location
+    description: NYC taxi zone lookup dimension.
+    columns:
+      - name: location_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_payment_type
+    description: Payment type dimension.
+    columns:
+      - name: payment_type
+        tests:
+          - unique
+          - not_null
+
+
+  - name: dim_rate_code
+    description: Rate code dimension.
+    columns:
+      - name: rate_code_id
+        tests:
+          - unique
+          - not_null
+
+
+  - name: fact_taxi_trip
+    description: Fact table at one row per taxi trip.
+    columns:
+      - name: trip_key
+        tests:
+          - not_null
+
+      - name: pickup_date
+        tests:
+          - not_null
+
+      - name: pu_location_id
+        tests:
+          - relationships:
+              to: ref('dim_location')
+              field: location_id
+
+      - name: do_location_id
+        tests:
+          - relationships:
+              to: ref('dim_location')
+              field: location_id
+
+  - name: mart_taxi_trip_analytics
+    description: Flattened analytics mart matching the original Snowflake test query.

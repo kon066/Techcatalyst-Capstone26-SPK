@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: mart_zone_demand
+    description: "Pickup demand by taxi zone for Streamlit map visualizations."
+    columns:
+      - name: pickup_location_id
+        tests:
+          - not_null
+      - name: trip_count
+        tests:
+          - not_null
+
+  - name: mart_route_analytics
+    description: "Pickup to dropoff route analytics by taxi zone and borough."
+    columns:
+      - name: pickup_location_id
+        tests:
+          - not_null
+      - name: dropoff_location_id
+        tests:
+          - not_null
+      - name: trip_count
+        tests:
+          - not_null
+
+  - name: mart_hourly_heatmap
+    description: "Hourly pickup demand by taxi zone."
+    columns:
+      - name: pickup_location_id
+        tests:
+          - not_null
+      - name: pickup_hour
+        tests:
+          - not_null
+      - name: trip_count
+        tests:
+          - not_null
+
+  - name: mart_zone_profitability
+    description: "Zone-level revenue, fare, tip, and profitability metrics."
+    columns:
+      - name: pickup_location_id
+        tests:
+          - not_null
+      - name: trip_count
+        tests:
+          - not_null
+      - name: total_revenue
+        tests:
+          - not_null
