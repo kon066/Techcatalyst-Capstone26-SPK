@@ -11,5 +11,5 @@ select distinct
         else 'Other'
     end as rate_code_desc
 
-from {{ ref('stg_taxi_trips') }}
+from {{ ref('fact_taxi_trip') }}
 where rate_code_id is not null

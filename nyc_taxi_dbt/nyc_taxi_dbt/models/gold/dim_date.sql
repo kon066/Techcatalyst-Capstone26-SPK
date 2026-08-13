@@ -15,5 +15,5 @@ select distinct
         else false
     end as is_weekend
 
-from {{ ref('stg_taxi_trips') }}
+from {{ ref('fact_taxi_trip') }}
 where pickup_datetime is not null

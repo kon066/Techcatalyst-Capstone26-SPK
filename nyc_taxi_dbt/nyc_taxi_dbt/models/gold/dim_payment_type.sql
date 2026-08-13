@@ -11,5 +11,5 @@ select distinct
         else 'Other'
     end as payment_type_desc
 
-from {{ ref('stg_taxi_trips') }}
+from {{ ref('fact_taxi_trip') }}
 where payment_type is not null
