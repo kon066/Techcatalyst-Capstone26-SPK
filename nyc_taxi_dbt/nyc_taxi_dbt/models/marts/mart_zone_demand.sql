@@ -36,7 +36,7 @@ final as (
         p.geometry_wkt,
 
         count(*) as trip_count,
-        sum(t.total_amount) as total_revenue,
+        sum(t.total_amount) - sum(t.tip_amount) as total_revenue_before_tip,
         avg(t.total_amount) as avg_revenue_per_trip,
         avg(t.fare_amount) as avg_fare,
 
