@@ -14,8 +14,22 @@ from branca.colormap import linear
 # ----------------------------------------
 
 st.set_page_config(
-    page_title="NYC Taxi Zone Demand",
+    page_title="NYC Taxi Zone Analytics",
     layout="wide"
+)
+
+# ----------------------------------------
+# Analysis Type
+# ----------------------------------------
+
+analysis_type = st.radio(
+    "Analysis Type",
+    [
+        "Pickup Zones",
+        "Dropoff Zones",
+        "Net Flow"
+    ],
+    horizontal=True
 )
 
 # ----------------------------------------
@@ -39,18 +53,107 @@ conn = snowflake.connector.connect(
 # Query Data
 # ----------------------------------------
 
-query = """
-SELECT *
-FROM MART_ZONE_DEMAND
-WHERE PICKUP_BOROUGH NOT IN ('N/A', 'Unknown')
-"""
+if analysis_type == "Pickup Zones":
+
+    query = """
+    SELECT
+        p.*,
+        d.GEOMETRY_WKT
+    FROM MART_ZONE_PROFITABILITY p
+    INNER JOIN MART_ZONE_DEMAND d
+        ON p.PICKUP_LOCATION_ID = d.PICKUP_LOCATION_ID
+    WHERE p.PICKUP_BOROUGH NOT IN ('N/A', 'Unknown')
+    """
+
+elif analysis_type == "Dropoff Zones":
+
+    query = """
+    WITH dropoff_metrics AS (
+
+        SELECT
+            DO_LOCATION_ID AS LOCATION_ID,
+            DO_NAME AS PICKUP_ZONE,
+            DO_BOROUGH AS PICKUP_BOROUGH,
+
+            COUNT(*) AS TRIP_COUNT,
+            SUM(TOTAL_AMOUNT) AS TOTAL_REVENUE,
+            AVG(TOTAL_AMOUNT) AS REVENUE_PER_TRIP,
+            AVG(TRIP_DISTANCE) AS AVG_TRIP_DISTANCE,
+            AVG(FARE_AMOUNT) AS AVG_FARE,
+            AVG(REVENUE_PER_MILE) AS REVENUE_PER_MILE
+
+        FROM MART_TAXI_TRIP_ANALYTICS
+
+        WHERE DO_BOROUGH NOT IN ('N/A','Unknown')
+
+        GROUP BY
+            DO_LOCATION_ID,
+            DO_NAME,
+            DO_BOROUGH
+    )
+
+    SELECT
+        m.*,
+        g.GEOMETRY_WKT
+    FROM dropoff_metrics m
+    INNER JOIN MART_ZONE_DEMAND g
+        ON m.LOCATION_ID = g.PICKUP_LOCATION_ID
+    """
+
+else:
+
+    query = """
+    WITH pickups AS (
+
+        SELECT
+            PU_LOCATION_ID AS LOCATION_ID,
+            COUNT(*) AS PICKUP_COUNT
+        FROM MART_TAXI_TRIP_ANALYTICS
+        GROUP BY PU_LOCATION_ID
+
+    ),
+
+    dropoffs AS (
+
+        SELECT
+            DO_LOCATION_ID AS LOCATION_ID,
+            COUNT(*) AS DROPOFF_COUNT
+        FROM MART_TAXI_TRIP_ANALYTICS
+        GROUP BY DO_LOCATION_ID
+
+    )
+
+    SELECT
+        g.PICKUP_LOCATION_ID,
+        g.PICKUP_ZONE,
+        g.PICKUP_BOROUGH,
+        g.GEOMETRY_WKT,
+
+        COALESCE(p.PICKUP_COUNT,0) AS PICKUP_COUNT,
+        COALESCE(d.DROPOFF_COUNT,0) AS DROPOFF_COUNT,
+
+        COALESCE(p.PICKUP_COUNT,0)
+        -
+        COALESCE(d.DROPOFF_COUNT,0)
+        AS NET_FLOW
+
+    FROM MART_ZONE_DEMAND g
+
+    LEFT JOIN pickups p
+        ON g.PICKUP_LOCATION_ID = p.LOCATION_ID
+
+    LEFT JOIN dropoffs d
+        ON g.PICKUP_LOCATION_ID = d.LOCATION_ID
+
+    WHERE g.PICKUP_BOROUGH NOT IN ('N/A','Unknown')
+    """
 
 df = pd.read_sql(query, conn)
 
 conn.close()
 
 # ----------------------------------------
-# Convert WKT -> Geometry
+# Geometry
 # ----------------------------------------
 
 df["geometry"] = df["GEOMETRY_WKT"].apply(wkt.loads)
@@ -60,64 +163,157 @@ gdf = gpd.GeoDataFrame(
     geometry="geometry"
 )
 
-# Restore original CRS from taxi_zones.shp
 gdf = gdf.set_crs("EPSG:2263")
-
-# Convert to latitude/longitude for Folium
 gdf = gdf.to_crs(epsg=4326)
 
 # ----------------------------------------
-# Header
+# Title
 # ----------------------------------------
 
-st.title("NYC Taxi Zone Demand")
-
-metric_col1, metric_col2 = st.columns(2)
-
-with metric_col1:
-    st.metric(
-        "Total Trips",
-        f"{gdf['TRIP_COUNT'].sum():,.0f}"
-    )
-
-with metric_col2:
-    st.metric(
-        "Total Revenue",
-        f"${gdf['TOTAL_REVENUE'].sum():,.2f}"
-    )
+st.title("NYC Taxi Zone Analytics")
 
 # ----------------------------------------
-# Metric Buttons
+# Borough Filter
 # ----------------------------------------
 
-st.subheader("Map Coloring")
+boroughs = sorted(
+    gdf["PICKUP_BOROUGH"].dropna().unique()
+)
 
-btn_col1, btn_col2 = st.columns(2)
+selected_borough = st.selectbox(
+    "Borough Filter",
+    ["All"] + boroughs
+)
+
+if selected_borough != "All":
+    gdf = gdf[
+        gdf["PICKUP_BOROUGH"]
+        == selected_borough
+    ]
+
+# ----------------------------------------
+# KPI Cards
+# ----------------------------------------
+
+col1, col2, col3, col4 = st.columns(4)
+
+if analysis_type == "Net Flow":
+
+    with col1:
+        st.metric(
+            "Total Pickups",
+            f"{gdf['PICKUP_COUNT'].sum():,.0f}"
+        )
+
+    with col2:
+        st.metric(
+            "Total Dropoffs",
+            f"{gdf['DROPOFF_COUNT'].sum():,.0f}"
+        )
+
+    with col3:
+        st.metric(
+            "Max Net Flow",
+            f"{gdf['NET_FLOW'].max():,.0f}"
+        )
+
+    with col4:
+        st.metric(
+            "Min Net Flow",
+            f"{gdf['NET_FLOW'].min():,.0f}"
+        )
+
+else:
+
+    with col1:
+        st.metric(
+            "Trips",
+            f"{gdf['TRIP_COUNT'].sum():,.0f}"
+        )
+
+    with col2:
+        st.metric(
+            "Revenue",
+            f"${gdf['TOTAL_REVENUE'].sum():,.0f}"
+        )
+
+    with col3:
+        st.metric(
+            "Avg Revenue / Trip",
+            f"${gdf['REVENUE_PER_TRIP'].mean():.2f}"
+        )
+
+    with col4:
+        st.metric(
+            "Avg Revenue / Mile",
+            f"${gdf['REVENUE_PER_MILE'].mean():.2f}"
+        )
+
+# ----------------------------------------
+# Metrics
+# ----------------------------------------
+
+if analysis_type == "Net Flow":
+
+    metrics = {
+        "Net Flow": (
+            "NET_FLOW",
+            "Net Flow"
+        ),
+        "Pickups": (
+            "PICKUP_COUNT",
+            "Pickup Count"
+        ),
+        "Dropoffs": (
+            "DROPOFF_COUNT",
+            "Dropoff Count"
+        )
+    }
+
+else:
+
+    metrics = {
+        "Trips": (
+            "TRIP_COUNT",
+            "Total Trips"
+        ),
+        "Revenue": (
+            "TOTAL_REVENUE",
+            "Total Revenue ($)"
+        ),
+        "Revenue / Trip": (
+            "REVENUE_PER_TRIP",
+            "Revenue Per Trip ($)"
+        ),
+        "Revenue / Mile": (
+            "REVENUE_PER_MILE",
+            "Revenue Per Mile ($)"
+        ),
+        "Avg Fare": (
+            "AVG_FARE",
+            "Average Fare ($)"
+        ),
+        "Avg Distance": (
+            "AVG_TRIP_DISTANCE",
+            "Average Trip Distance"
+        )
+    }
+
+st.subheader("Map Analysis")
 
 if "selected_metric" not in st.session_state:
     st.session_state.selected_metric = "TRIP_COUNT"
 
-with btn_col1:
-    if st.button(
-        "Total Trips",
-        use_container_width=True
-    ):
-        st.session_state.selected_metric = "TRIP_COUNT"
+metric_names = list(metrics.keys())
 
-with btn_col2:
-    if st.button(
-        "Total Revenue",
-        use_container_width=True
-    ):
-        st.session_state.selected_metric = "TOTAL_REVENUE"
-
-color_metric = st.session_state.selected_metric
-
-legend_label = (
-    "Total Trips"
-    if color_metric == "TRIP_COUNT"
-    else "Total Revenue ($)"
+selected_metric_name = st.radio(
+    "Map Metric",
+    metric_names,
+    horizontal=True
 )
+
+color_metric = metrics[selected_metric_name][0]
+legend_label = metrics[selected_metric_name][1]
 
 # ----------------------------------------
 # Map Setup
@@ -138,13 +334,44 @@ m = folium.Map(
 # Color Scale
 # ----------------------------------------
 
-colormap = linear.YlOrRd_09.scale(
-    float(gdf[color_metric].min()),
-    float(gdf[color_metric].max())
-)
+total_metrics = [
+    "TRIP_COUNT",
+    "TOTAL_REVENUE",
+    "PICKUP_COUNT",
+    "DROPOFF_COUNT",
+    "NET_FLOW"
+]
 
-# Makes the legend much cleaner
-colormap = colormap.to_step(6)
+if color_metric in total_metrics:
+
+    lower = gdf[color_metric].quantile(0.05)
+    upper = gdf[color_metric].quantile(0.95)
+
+else:
+
+    lower = float(gdf[color_metric].min())
+    upper = float(gdf[color_metric].max())
+
+if analysis_type == "Net Flow":
+
+    max_abs = max(
+        abs(lower),
+        abs(upper)
+    )
+
+    colormap = linear.RdYlGn_11.scale(
+        -max_abs,
+        max_abs
+    )
+
+else:
+
+    colormap = linear.YlOrRd_09.scale(
+        lower,
+        upper
+    )
+
+colormap.width = 700
 colormap.caption = legend_label
 
 # ----------------------------------------
@@ -155,37 +382,33 @@ folium.GeoJson(
     gdf,
     style_function=lambda feature: {
         "fillColor": colormap(
-            feature["properties"][color_metric]
+            max(
+                lower,
+                min(
+                    feature["properties"][color_metric],
+                    upper
+                )
+            )
         ),
         "color": "#444444",
         "weight": 0.75,
-        "fillOpacity": 0.80,
+        "fillOpacity": 0.80
     },
     highlight_function=lambda feature: {
         "weight": 2.5,
         "color": "#000000",
-        "fillOpacity": 0.95,
+        "fillOpacity": 0.95
     },
     tooltip=folium.GeoJsonTooltip(
         fields=[
             "PICKUP_ZONE",
             "PICKUP_BOROUGH",
-            "TRIP_COUNT",
-            "TOTAL_REVENUE",
-            "AVG_REVENUE_PER_TRIP",
-            "AVG_FARE",
-            "AVG_TIP_CREDIT_CARD_ONLY",
-            "AVG_TRIP_DISTANCE"
+            color_metric
         ],
         aliases=[
             "Zone",
             "Borough",
-            "Total Trips",
-            "Total Revenue",
-            "Avg Revenue / Trip",
-            "Avg Fare",
-            "Avg Credit Card Tip",
-            "Avg Trip Distance"
+            legend_label
         ],
         localize=True,
         sticky=True,
@@ -203,4 +426,56 @@ st_folium(
     m,
     width=1400,
     height=800
+)
+
+# ----------------------------------------
+# Top Zones Table
+# ----------------------------------------
+
+st.subheader(f"Top 15 Zones by {legend_label}")
+
+if analysis_type == "Net Flow":
+
+    top_df = (
+        gdf[
+            [
+                "PICKUP_ZONE",
+                "PICKUP_BOROUGH",
+                "PICKUP_COUNT",
+                "DROPOFF_COUNT",
+                "NET_FLOW"
+            ]
+        ]
+        .sort_values(
+            color_metric,
+            ascending=False
+        )
+        .head(15)
+    )
+
+else:
+
+    top_df = (
+        gdf[
+            [
+                "PICKUP_ZONE",
+                "PICKUP_BOROUGH",
+                "TRIP_COUNT",
+                "TOTAL_REVENUE",
+                "REVENUE_PER_TRIP",
+                "REVENUE_PER_MILE",
+                "AVG_FARE",
+                "AVG_TRIP_DISTANCE"
+            ]
+        ]
+        .sort_values(
+            color_metric,
+            ascending=False
+        )
+        .head(15)
+    )
+
+st.dataframe(
+    top_df,
+    use_container_width=True
 )
