@@ -33,21 +33,36 @@ analysis_type = st.radio(
 )
 
 # ----------------------------------------
-# Connect to Snowflake
+# Cached Snowflake Connection
 # ----------------------------------------
 
-config = configparser.ConfigParser()
-config.read("snow.cfg")
+@st.cache_resource
+def get_connection():
 
-conn = snowflake.connector.connect(
-    user=config["SNOWFLAKE"]["user"],
-    password=config["SNOWFLAKE"]["password"],
-    account=config["SNOWFLAKE"]["account"],
-    warehouse=config["SNOWFLAKE"]["warehouse"],
-    database=config["SNOWFLAKE"]["database"],
-    schema=config["SNOWFLAKE"]["schema"],
-    role=config["SNOWFLAKE"]["role"]
-)
+    config = configparser.ConfigParser()
+    config.read("snow.cfg")
+
+    return snowflake.connector.connect(
+        user=config["SNOWFLAKE"]["user"],
+        password=config["SNOWFLAKE"]["password"],
+        account=config["SNOWFLAKE"]["account"],
+        warehouse=config["SNOWFLAKE"]["warehouse"],
+        database=config["SNOWFLAKE"]["database"],
+        schema=config["SNOWFLAKE"]["schema"],
+        role=config["SNOWFLAKE"]["role"]
+    )
+
+
+# ----------------------------------------
+# Cached Query Runner
+# ----------------------------------------
+
+@st.cache_data(ttl=3600)
+def run_query(query):
+
+    conn = get_connection()
+
+    return pd.read_sql(query, conn)
 
 # ----------------------------------------
 # Query Data
@@ -148,10 +163,7 @@ else:
     WHERE g.PICKUP_BOROUGH NOT IN ('N/A','Unknown')
     """
 
-df = pd.read_sql(query, conn)
-
-conn.close()
-
+df = run_query(query)
 # ----------------------------------------
 # Geometry
 # ----------------------------------------
@@ -425,7 +437,8 @@ colormap.add_to(m)
 st_folium(
     m,
     width=1400,
-    height=800
+    height=800,
+    returned_objects=[]
 )
 
 # ----------------------------------------
